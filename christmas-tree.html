@@ -291,8 +291,8 @@
      * 千万别把 service_role key 填进来。
      * ---------------------------------------------------------------------- */
     cloud: {
-      url: '',
-      anonKey: '',
+      url: 'https://jhjicwaylajvajcugntn.supabase.co',
+      anonKey: 'sb_publishable_k6MonP1dPyewMYOU5YrJJA_VAGQQnhz',
       table: 'wishes',
       maxFetch: 60
     }
@@ -665,11 +665,17 @@
   }
 
   function cloudHeaders(extra) {
+    var key = String(CONFIG.cloud.anonKey || '').trim();
     var h = {
-      'apikey': CONFIG.cloud.anonKey,
-      'Authorization': 'Bearer ' + CONFIG.cloud.anonKey,
+      'apikey': key,
       'Content-Type': 'application/json'
     };
+    // 两种 key 都要支持：
+    //   旧版 legacy anon key（eyJ... 的 JWT）→ 必须再加 Authorization: Bearer
+    //   新版 publishable key（sb_publishable_...）→ 只放 apikey，当 Bearer 用会 401
+    if (key.indexOf('sb_publishable_') !== 0) {
+      h['Authorization'] = 'Bearer ' + key;
+    }
     if (extra) for (var k in extra) if (extra.hasOwnProperty(k)) h[k] = extra[k];
     return h;
   }
