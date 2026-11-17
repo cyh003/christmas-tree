@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#04060e">
+<meta name="format-detection" content="telephone=no,email=no,address=no">
+<title>电子圣诞树 · Merry Christmas</title>
+<style>
+  :root {
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-r: env(safe-area-inset-right, 0px);
+    --safe-l: env(safe-area-inset-left, 0px);
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #04060e;
+    font-family: "Songti SC", "STSong", "SimSun", Georgia, serif;
+    overscroll-behavior: none;
+  }
+  #scene {
+    display: block; width: 100%; height: 100%;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .title {
+    position: fixed; left: 0; right: 0; top: 5.5vh;
+    text-align: center; pointer-events: none;
+    color: #fff8e7;
+    font-size: clamp(20px, 3.4vw, 46px);
+    letter-spacing: .28em; text-indent: .28em;
+    text-shadow: 0 0 18px rgba(255, 214, 140, .55), 0 0 46px rgba(255, 170, 60, .25);
+    opacity: 0; transform: translateY(14px);
+    transition: opacity 1.6s ease, transform 1.6s ease;
+  }
+  .title.show { opacity: .95; transform: none; }
+  .title small {
+    display: block; margin-top: 12px;
+    font-size: clamp(11px, 1.05vw, 15px);
+    letter-spacing: .5em; text-indent: .5em;
+    color: rgba(220, 230, 255, .62);
+    text-shadow: none;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+  .hint {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(4vh + var(--safe-b) + 50px);
+    text-align: center; pointer-events: none;
+    font-size: clamp(10px, .95vw, 13px);
+    letter-spacing: .22em;
+    color: rgba(190, 205, 235, .42);
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+    opacity: 0;
+    transition: opacity 1.6s ease .4s;
+  }
+  .hint.show { opacity: 1; }
+
+  .wishbar {
+    position: fixed; left: 50%; bottom: calc(4vh + var(--safe-b) + 58px);
+    width: min(76vw, 360px);
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 8px 8px 16px;
+    border: 1px solid rgba(255, 222, 168, .34);
+    border-radius: 999px;
+    background: rgba(9, 14, 26, .82);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transform: translateX(-50%) translateY(14px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .28s ease, transform .28s ease;
+    z-index: 20;
+  }
+  .wishbar.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .wishbar input {
+    flex: 1; min-width: 0;
+    border: 0; outline: 0; background: transparent;
+    color: #ffe9b8; font-size: 16px;          /* 16px 起，iOS 才不会聚焦时放大 */
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+    letter-spacing: .04em;
+  }
+  .wishbar input::placeholder { color: rgba(255, 233, 184, .38); }
+  .wishbar button {
+    flex: none; border: 0; cursor: pointer;
+    padding: 8px 14px; border-radius: 999px;
+    background: rgba(255, 205, 120, .18);
+    color: #ffe0a6; font-size: 14px;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+  .wishbar button:active { background: rgba(255, 205, 120, .34); }
+
+  .tools {
+    position: fixed; right: calc(14px + var(--safe-r)); bottom: calc(4vh + var(--safe-b));
+    display: flex; gap: 10px; z-index: 20;
+  }
+  .tool {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255, 225, 170, .26);
+    background: rgba(10, 16, 30, .55);
+    color: rgba(240, 226, 192, .82);
+    font-size: 13px; line-height: 1; cursor: pointer;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tool.on { background: rgba(255, 210, 130, .2); border-color: rgba(255, 210, 130, .58); color: #ffe6b4; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(4vh + var(--safe-b) + 108px);
+    max-width: 78vw; padding: 9px 16px; border-radius: 999px;
+    border: 1px solid rgba(255, 222, 168, .26);
+    background: rgba(9, 14, 26, .86);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    color: #ffe9b8; font-size: 13px; line-height: 1.45; letter-spacing: .03em;
+    text-align: center;
+    transform: translateX(-50%) translateY(8px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease, transform .22s ease;
+    z-index: 30;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---- 图片预览层：微信里 a[download] 不生效，只能长按保存 ---- */
+  .viewer {
+    position: fixed; inset: 0; z-index: 60;
+    display: none; flex-direction: column;
+    background: rgba(2, 4, 10, .97);
+    padding: calc(2vh + env(safe-area-inset-top, 0px)) 4vw calc(2vh + var(--safe-b));
+  }
+  .viewer.show { display: flex; }
+  .viewer-tip {
+    flex: none; text-align: center;
+    color: #ffe9b8; font-size: 14px; line-height: 1.6;
+    letter-spacing: .06em; padding: 10px 8px 14px;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+  .viewer-tip b { color: #ffd98e; }
+  .viewer-imgwrap {
+    flex: 1; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .viewer img {
+    max-width: 100%; max-height: 100%;
+    display: block; border-radius: 6px;
+    -webkit-touch-callout: default;
+    touch-action: manipulation;
+  }
+  .viewer-close {
+    flex: none; margin: 14px auto 0;
+    padding: 11px 34px; border-radius: 999px;
+    border: 1px solid rgba(255, 225, 170, .34);
+    background: rgba(255, 205, 120, .14);
+    color: #ffe0a6; font-size: 15px; cursor: pointer;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+
+  /* 微信里点右上角分享最省事，页面本身不需要额外 UI */
+
+  /* ---- 祝福墙 ---- */
+  .wall {
+    position: fixed; inset: 0; z-index: 55;
+    display: none; flex-direction: column;
+    background: rgba(3, 6, 14, .96);
+    padding: calc(3vh + env(safe-area-inset-top, 0px)) 5vw calc(2.5vh + var(--safe-b));
+  }
+  .wall.show { display: flex; }
+  .wall-head { flex: none; text-align: center; padding-bottom: 16px; }
+  .wall-title {
+    color: #fff8e7; font-size: clamp(19px, 2.6vw, 26px);
+    letter-spacing: .2em; text-indent: .2em;
+  }
+  .wall-sub {
+    margin-top: 7px; color: rgba(200, 214, 245, .48);
+    font-size: 12px; letter-spacing: .1em;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+  .wall-list {
+    flex: 1; min-height: 0; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 4px 2px 12px;
+  }
+  .wall-item {
+    flex: none;
+    padding: 13px 16px; border-radius: 12px;
+    border: 1px solid rgba(255, 222, 168, .16);
+    background: rgba(255, 232, 184, .045);
+    color: #ffe9b8; font-size: 15px; line-height: 1.55;
+    letter-spacing: .02em; word-break: break-word;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+    animation: wallIn .35s ease both;
+  }
+  @keyframes wallIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  .wall-item .t {
+    display: block; margin-top: 6px;
+    color: rgba(190, 205, 235, .34); font-size: 11px; letter-spacing: .05em;
+  }
+  .wall-empty {
+    text-align: center; padding: 40px 20px;
+    color: rgba(200, 214, 245, .42); font-size: 14px; line-height: 1.9;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+  .wall-close {
+    flex: none; margin: 12px auto 0;
+    padding: 11px 34px; border-radius: 999px;
+    border: 1px solid rgba(255, 225, 170, .3);
+    background: rgba(255, 205, 120, .12);
+    color: #ffe0a6; font-size: 15px; cursor: pointer;
+    font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .title, .hint, .wishbar, .toast, .viewer, .wall { transition: none !important; }
+    .wall-item { animation: none; }
+    .title { transform: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="title" id="title"></div>
+<div class="hint" id="hint"></div>
+<div class="wishbar" id="wishbar">
+  <input id="wish-input" maxlength="18" placeholder="写一句心愿，回车挂到树上" autocomplete="off">
+  <button id="wish-ok">挂上</button>
+</div>
+<div class="tools">
+  <button class="tool" id="btn-wish" aria-label="写一句自定义心愿">写</button>
+  <button class="tool" id="btn-wall" aria-label="看看大家的祝福">墙</button>
+  <button class="tool" id="btn-sound" aria-label="音效开关">♪</button>
+  <button class="tool" id="btn-save" aria-label="保存图片">存图</button>
+  <button class="tool" id="btn-share" aria-label="复制分享链接">分享</button>
+</div>
+<div class="toast" id="toast"></div>
+<div class="viewer" id="viewer">
+  <div class="viewer-tip" id="viewer-tip">长按图片 → <b>保存图片</b>，就能发到聊天里</div>
+  <div class="viewer-imgwrap"><img id="viewer-img" alt="圣诞树图片"></div>
+  <button class="viewer-close" id="viewer-close">关闭</button>
+</div>
+
+<!-- 祝福墙：所有人的心愿都在这里 -->
+<div class="wall" id="wall">
+  <div class="wall-head">
+    <div class="wall-title">大家的祝福</div>
+    <div class="wall-sub" id="wall-sub">正在加载…</div>
+  </div>
+  <div class="wall-list" id="wall-list"></div>
+  <button class="wall-close" id="wall-close">关闭</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==================================================================
+   * 配置区：想改成生日蛋糕 / 新年烟花，先从这里下手
+   * ================================================================== */
+  var CONFIG = {
+    copy: {
+      title: 'Merry Christmas',
+      subtitle: '圣 诞 快 乐',
+      hint: '拖动旋转 · 点一下飘心愿 · 右下可写可分享',
+      watermark: '点一下，挂一颗心愿',
+      fileName: 'merry-christmas.png'
+    },
+    wishes: [
+      '愿你今年所求皆有回应',
+      '岁末的风，会把好消息吹来',
+      '平安，比什么都浪漫',
+      '想见的人，今年一定要见到',
+      '所有的辛苦，都算数',
+      '明年也要好好吃饭'
+    ],
+    maxWishLen: 18,
+    tree: { pointsHigh: 1250, pointsLow: 620, turns: 13, strands: 5, height: 520, baseRadius: 208 },
+    palette: { foliageHue: 138, foliageVar: 24, goldHue: 46, ornaments: [0, 42, 200, 330, 188] },
+    timeline: { starDrop: 2.15, starLand: 2.85, introEnd: 3.7 },
+    bg: ['#101d33', '#0a1020', '#04060e'],
+    storage: { wishes: 'xmas_wishes_v1', sound: 'xmas_sound_v1' },
+
+    /* ---------------- 共享祝福池（可留空，留空就退回纯本地模式） ----------------
+     * 去 https://supabase.com 建一个免费项目，然后把两项填进来：
+     *   url    : Project Settings → API → Project URL     形如 https://xxxx.supabase.co
+     *   anonKey: Project Settings → API → anon public key  形如 eyJhbGciOi...
+     *
+     * anon key 是"公开密钥"，本来就该出现在前端代码里，不是泄露；
+     * 真正的访问控制靠数据库的 RLS 策略（见 SUPABASE_SETUP.sql）。
+     * 千万别把 service_role key 填进来。
+     * ---------------------------------------------------------------------- */
+    cloud: {
+      url: '',
+      anonKey: '',
+      table: 'wishes',
+      maxFetch: 60
+    }
+  };
+
+  var TAU = Math.PI * 2;
+
+  /* ---------------- 环境 ---------------- */
+
+  var COARSE = window.matchMedia('(pointer: coarse)').matches;
+  var SMALL = Math.min(window.innerWidth, window.innerHeight) < 560;
+  var LOW = COARSE || SMALL;
+  var REDUCED = !!(window.matchMedia('(prefers-reduced-motion: reduce)') || {}).matches;
+
+  // 微信内置浏览器（iOS/Android 都有）：a[download] 失效、音频要等首次触摸、剪贴板多半被禁
+  var UA = window.navigator.userAgent || '';
+  var IN_WECHAT = /MicroMessenger/i.test(UA);
+  var IS_IOS = /iPhone|iPad|iPod/i.test(UA) || (UA.indexOf('Mac') > -1 && COARSE);
+
+  var cvs = document.getElementById('scene');
+  var ctx = cvs.getContext('2d', { alpha: false });
+
+  var elTitle = document.getElementById('title');
+  var elHint = document.getElementById('hint');
+  var elBar = document.getElementById('wishbar');
+  var elInput = document.getElementById('wish-input');
+  var elOk = document.getElementById('wish-ok');
+  var elSound = document.getElementById('btn-sound');
+  var elSave = document.getElementById('btn-save');
+  var elShare = document.getElementById('btn-share');
+  var elWish = document.getElementById('btn-wish');
+  var elToast = document.getElementById('toast');
+  var elViewer = document.getElementById('viewer');
+  var elViewerImg = document.getElementById('viewer-img');
+  var elViewerTip = document.getElementById('viewer-tip');
+  var elViewerClose = document.getElementById('viewer-close');
+  var elWallBtn = document.getElementById('btn-wall');
+  var elWall = document.getElementById('wall');
+  var elWallList = document.getElementById('wall-list');
+  var elWallSub = document.getElementById('wall-sub');
+  var elWallClose = document.getElementById('wall-close');
+
+  elTitle.innerHTML = CONFIG.copy.title + '<small>' + CONFIG.copy.subtitle + '</small>';
+  elHint.textContent = CONFIG.copy.hint;
+
+  var W = 0, H = 0, DPR = 1, lastDPR = 0;
+  var bgGrad = null, staticLayer = null;
+
+  var HGT = CONFIG.tree.height;
+  var BASE_R = CONFIG.tree.baseRadius;
+  var TURNS = CONFIG.tree.turns;
+  var STRANDS = CONFIG.tree.strands;
+
+  var tree = [];
+  var trunk = [];
+  var stars = [];
+  var snow = [];
+  var wishes = [];
+
+  /* ---------------- 存储（file:// 下也可能被禁，一律兜住） ---------------- */
+
+  function storeGet(key, fallback) {
+    try {
+      var v = window.localStorage.getItem(key);
+      return v === null ? fallback : v;
+    } catch (e) { return fallback; }
+  }
+
+  function storeSet(key, val) {
+    try { window.localStorage.setItem(key, val); } catch (e) { /* 忽略 */ }
+  }
+
+  function loadSavedWishes() {
+    try {
+      var arr = JSON.parse(storeGet(CONFIG.storage.wishes, '[]'));
+      return Array.isArray(arr) ? arr.filter(function (s) { return typeof s === 'string' && s; }) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveWishText(text) {
+    var arr = loadSavedWishes();
+    var i = arr.indexOf(text);
+    if (i >= 0) arr.splice(i, 1);
+    arr.unshift(text);
+    if (arr.length > 40) arr.length = 40;
+    storeSet(CONFIG.storage.wishes, JSON.stringify(arr));
+  }
+
+  /* ---------------- 音效：WebAudio 合成一声钟，不用外链 ---------------- */
+
+  var soundOn = storeGet(CONFIG.storage.sound, '0') === '1';
+  var audioCtx = null;
+
+  function syncSoundBtn() {
+    if (soundOn) elSound.classList.add('on'); else elSound.classList.remove('on');
+  }
+  syncSoundBtn();
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { audioCtx = new AC(); } catch (e) { return null; }
+    }
+    if (audioCtx.state === 'suspended' && audioCtx.resume) audioCtx.resume();
+    return audioCtx;
+  }
+
+  // 微信 iOS：AudioContext 必须在用户手势的同步栈里创建/resume，否则一直 suspended
+  // （声音开关和点树都会走到这里，首次触摸就把音频解锁掉）
+  function unlockAudioOnGesture() {
+    var ac = ensureAudio();
+    if (!ac) return;
+    if (ac.state === 'suspended' && ac.resume) {
+      // resume 是异步的，微信里要显式接一下 reject，否则控制台会刷红字
+      var p = ac.resume();
+      if (p && p.catch) p.catch(function () {});
+    }
+    // iOS 老版本还需要播一个静音 source 才算真正解锁
+    try {
+      var buf = ac.createBuffer(1, 1, 22050);
+      var src = ac.createBufferSource();
+      src.buffer = buf;
+      src.connect(ac.destination);
+      src.start(0);
+    } catch (e) { /* 忽略 */ }
+  }
+
+  function chime() {
+    if (!soundOn) return;
+    var ac = ensureAudio();
+    if (!ac) return;
+    var now = ac.currentTime;
+    var parts = [[1180, 0.052, 0.75], [1770, 0.03, 0.55], [2360, 0.016, 0.4]];
+    for (var i = 0; i < parts.length; i++) {
+      var osc = ac.createOscillator();
+      var gain = ac.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(parts[i][0], now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(parts[i][1], now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + parts[i][2]);
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start(now);
+      osc.stop(now + parts[i][2] + 0.05);
+    }
+  }
+
+  elSound.addEventListener('click', function (e) {
+    e.preventDefault();
+    // 先在同步栈里解锁音频，再切状态
+    unlockAudioOnGesture();
+    soundOn = !soundOn;
+    storeSet(CONFIG.storage.sound, soundOn ? '1' : '0');
+    syncSoundBtn();
+    if (soundOn) chime();
+  });
+
+  /* ---------------- 预渲染精灵 ---------------- */
+
+  var glowCache = {};
+
+  function glowSprite(hue, sat) {
+    var key = hue + '_' + sat;
+    if (glowCache[key]) return glowCache[key];
+    var S = 64;
+    var c = document.createElement('canvas');
+    c.width = c.height = S;
+    var g = c.getContext('2d');
+    var grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    grd.addColorStop(0, 'hsla(' + hue + ', ' + sat + '%, 72%, 0.55)');
+    grd.addColorStop(0.42, 'hsla(' + hue + ', ' + sat + '%, 62%, 0.16)');
+    grd.addColorStop(1, 'hsla(' + hue + ', ' + sat + '%, 60%, 0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, S, S);
+    glowCache[key] = c;
+    return c;
+  }
+
+  var starSprite = null;
+
+  function buildStarSprite() {
+    var S = 256;
+    var c = document.createElement('canvas');
+    c.width = c.height = S;
+    var g = c.getContext('2d');
+    var grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    grd.addColorStop(0, 'rgba(255, 240, 200, 0.85)');
+    grd.addColorStop(0.18, 'rgba(255, 214, 140, 0.35)');
+    grd.addColorStop(0.5, 'rgba(255, 190, 80, 0.10)');
+    grd.addColorStop(1, 'rgba(255, 180, 40, 0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, S, S);
+    starSprite = c;
+  }
+
+  /* ---------------- 场景数据 ---------------- */
+
+  function buildTree() {
+    tree = [];
+    trunk = [];
+    var PAL = CONFIG.palette;
+    var N = LOW ? CONFIG.tree.pointsLow : CONFIG.tree.pointsHigh;
+    for (var i = 0; i < N; i++) {
+      var u = i / (N - 1);
+      var r = BASE_R * Math.pow(u, 0.92) * (0.86 + 0.05 * Math.sin(u * Math.PI * 5));
+      var orn = Math.random() < 0.10;
+      var hue = orn ? PAL.ornaments[(Math.random() * PAL.ornaments.length) | 0]
+                    : (Math.random() < 0.22 ? PAL.goldHue : PAL.foliageHue + Math.random() * PAL.foliageVar);
+      var sat = orn ? 92 : 78;
+      var lum = orn ? 64 : 58;
+      var a = u * TAU * TURNS + (i % STRANDS) * (TAU / STRANDS) + Math.random() * 0.18;
+      tree.push({
+        u: u,
+        delay: 0.10 + u * 1.15 + Math.random() * 0.22,
+        y: -HGT / 2 + u * HGT + (Math.random() - 0.5) * 7,
+        r: r * (0.84 + Math.random() * 0.18),
+        ang: a,
+        ca: Math.cos(a), sa: Math.sin(a),
+        size: orn ? 2.4 + Math.random() * 1.8 : 1.0 + Math.random() * 0.8,
+        phase: Math.random() * TAU,
+        speed: 0.5 + Math.random() * 1.7,
+        orn: orn,
+        hue: hue, sat: sat, lum: lum,
+        fill: 'hsl(' + hue + ', ' + sat + '%, ' + lum + '%)',
+        glow: orn ? glowSprite(hue, sat) : null
+      });
+    }
+    for (var k = tree.length - 1; k > 0; k--) {
+      var j = (Math.random() * (k + 1)) | 0;
+      var tmp = tree[k]; tree[k] = tree[j]; tree[j] = tmp;
+    }
+    for (var m = 0; m < 36; m++) {
+      var ta = Math.random() * TAU;
+      trunk.push({
+        y: HGT / 2 + Math.random() * 24,
+        r: 12 + Math.random() * 15,
+        ang: ta, ca: Math.cos(ta), sa: Math.sin(ta),
+        size: 1.6 + Math.random() * 1.2,
+        fill: 'hsl(28, 45%, 30%)'
+      });
+    }
+  }
+
+  function buildStars() {
+    stars = [];
+    var n = Math.round(W * H / (LOW ? 16000 : 9000));
+    for (var i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H * 0.92,
+        r: Math.random() * 1.3 + 0.3,
+        a: 0.18 + Math.random() * 0.6,
+        sp: 0.6 + Math.random() * 2.2,
+        ph: Math.random() * TAU
+      });
+    }
+  }
+
+  function buildSnow() {
+    snow = [];
+    if (REDUCED) return;
+    var n = Math.round(W / (LOW ? 14 : 7));
+    for (var i = 0; i < n; i++) {
+      snow.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.7 + 0.6,
+        vy: 8 + Math.random() * 26,
+        sway: 6 + Math.random() * 16,
+        ph: Math.random() * TAU,
+        sp: 0.4 + Math.random() * 0.7,
+        a: 0.22 + Math.random() * 0.5
+      });
+    }
+  }
+
+  /* ---------------- 状态 ---------------- */
+
+  var angle = 0;
+  var spin = REDUCED ? 0 : 0.32;    // 减少动态时不自转，仍可手动拖动
+  var zoom = 1;
+  var dragging = false;
+  var dragX = 0, dragMoved = 0, dragVel = 0;
+  var quality = 1;
+  var perfAcc = 0, perfFrames = 0;
+  var groundCache = { key: '', grad: null };
+
+  var introT = REDUCED ? CONFIG.timeline.introEnd : 0;
+  var introDone = REDUCED;
+  var STAR_DROP = CONFIG.timeline.starDrop;
+  var STAR_LAND = CONFIG.timeline.starLand;
+  var INTRO_END = CONFIG.timeline.introEnd;
+  var tapSkipped = false;
+
+  function revealUI() {
+    if (!elTitle.classList.contains('show')) elTitle.classList.add('show');
+    if (!elHint.classList.contains('show')) elHint.classList.add('show');
+  }
+
+  function skipIntro() {
+    introT = INTRO_END;
+    introDone = true;
+    revealUI();
+  }
+
+  /* ---------------- 尺寸与静态层 ---------------- */
+
+  var lastResizeW = 0, lastResizeH = 0;
+
+  function resize() {
+    var nw = window.innerWidth, nh = window.innerHeight;
+    var ndpr = window.devicePixelRatio || 1;
+    if (nw === lastResizeW && nh === lastResizeH && ndpr === lastDPR) return;
+    lastResizeW = nw; lastResizeH = nh; lastDPR = ndpr;
+
+    // 按设备真实像素比渲染：以前写死 1.5，等于把 3x 屏的画面拉伸 2 倍，所以发虚。
+    // 上限放到 3（手机屏普遍 3x），再留一个像素总额兜住超大屏。
+    W = nw;
+    H = nh;
+    var native = ndpr || 1;
+    DPR = Math.min(native, LOW ? 3 : 2);
+    var budget = LOW ? 5.0e6 : 8.0e6;
+    while (W * H * DPR * DPR > budget && DPR > 1) DPR -= 0.25;
+
+    cvs.width = Math.round(W * DPR);
+    cvs.height = Math.round(H * DPR);
+    cvs.style.width = W + 'px';
+    cvs.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    buildStaticLayer();
+    groundCache.key = '';
+    wishCache = {};
+    buildStars();
+    buildSnow();
+  }
+
+  // 背景渐变每帧都画一遍纯属浪费：烘成一张离屏图，每帧只做一次 blit
+  function buildStaticLayer() {
+    var c = document.createElement('canvas');
+    c.width = cvs.width;
+    c.height = cvs.height;
+    var g = c.getContext('2d');
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var grd = g.createRadialGradient(W / 2, H * 0.42, 40, W / 2, H * 0.42, Math.max(W, H) * 0.78);
+    grd.addColorStop(0, CONFIG.bg[0]);
+    grd.addColorStop(0.45, CONFIG.bg[1]);
+    grd.addColorStop(1, CONFIG.bg[2]);
+    g.fillStyle = grd;
+    g.fillRect(0, 0, W, H);
+    staticLayer = c;
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', function () { setTimeout(resize, 120); });
+
+  /* ---------------- 共享祝福池（Supabase REST，不引 SDK） ----------------
+   * 只用 fetch 打 Supabase 的 REST 接口，避免引入几百 KB 的 supabase-js，
+   * 单文件体积才能压在 50KB 以内。
+   * ---------------------------------------------------------------------- */
+
+  var CLOUD_ON = !!(CONFIG.cloud && CONFIG.cloud.url && CONFIG.cloud.anonKey);
+  var cloudQueue = [];          // 离线时暂存的待上传心愿
+  var cloudFailCount = 0;
+
+  function cloudBase() {
+    return String(CONFIG.cloud.url).replace(/\/+$/, '') + '/rest/v1/' + CONFIG.cloud.table;
+  }
+
+  function cloudHeaders(extra) {
+    var h = {
+      'apikey': CONFIG.cloud.anonKey,
+      'Authorization': 'Bearer ' + CONFIG.cloud.anonKey,
+      'Content-Type': 'application/json'
+    };
+    if (extra) for (var k in extra) if (extra.hasOwnProperty(k)) h[k] = extra[k];
+    return h;
+  }
+
+  // 带超时的 fetch，微信网络差时不会一直转圈
+  function cloudFetch(url, opts, ms) {
+    ms = ms || 9000;
+    return new Promise(function (resolve, reject) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        reject(new Error('timeout'));
+      }, ms);
+
+      fetch(url, opts).then(function (r) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(r);
+      }, function (e) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(e);
+      });
+    });
+  }
+
+  function loadCloudQueue() {
+    try {
+      var a = JSON.parse(storeGet(CONFIG.storage.wishes + '_queue', '[]'));
+      cloudQueue = Array.isArray(a) ? a.slice(0, 30) : [];
+    } catch (e) { cloudQueue = []; }
+  }
+
+  function saveCloudQueue() {
+    storeSet(CONFIG.storage.wishes + '_queue', JSON.stringify(cloudQueue.slice(0, 30)));
+  }
+
+  // 把心愿推到云端（失败就排进队列，下次再试）
+  function pushWishToCloud(text) {
+    if (!CLOUD_ON) return;
+    var body = JSON.stringify({ content: text });
+    cloudFetch(cloudBase(), {
+      method: 'POST',
+      headers: cloudHeaders({ 'Prefer': 'return=minimal' }),
+      body: body
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      cloudFailCount = 0;
+    }).catch(function () {
+      cloudFailCount++;
+      cloudQueue.push(text);
+      saveCloudQueue();
+    });
+  }
+
+  // 把积压的失败心愿补发
+  function flushCloudQueue() {
+    if (!CLOUD_ON || !cloudQueue.length) return;
+    var batch = cloudQueue.slice();
+    cloudQueue = [];
+    saveCloudQueue();
+    for (var i = 0; i < batch.length; i++) pushWishToCloud(batch[i]);
+  }
+
+  // 拉取最新 N 条心愿
+  function fetchCloudWishes() {
+    if (!CLOUD_ON) return Promise.resolve([]);
+    var url = cloudBase() + '?select=content,created_at&order=created_at.desc&limit=' + (CONFIG.cloud.maxFetch || 60);
+    return cloudFetch(url, { method: 'GET', headers: cloudHeaders() }, 10000)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (rows) {
+        if (!Array.isArray(rows)) return [];
+        return rows.map(function (x) {
+          return {
+            content: typeof x.content === 'string' ? x.content : '',
+            created_at: x.created_at || ''
+          };
+        }).filter(function (x) { return x.content; });
+      })
+      .catch(function () { return []; });
+  }
+
+  /* ---------------- 祝福墙 UI ---------------- */
+
+  var wallOpen = false;
+
+  function fmtTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var now = new Date();
+    var diff = (now - d) / 1000;
+    if (diff < 60) return '刚刚';
+    if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+    if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' 天前';
+    return (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function renderWall(items) {
+    elWallList.innerHTML = '';
+    if (!items.length) {
+      var d = document.createElement('div');
+      d.className = 'wall-empty';
+      d.innerHTML = CLOUD_ON
+        ? '还没有人留下祝福<br>点树上任意位置，写下第一句吧'
+        : '共享祝福池未开启<br>（纯本地模式，心愿只存在你自己的设备上）';
+      elWallList.appendChild(d);
+      return;
+    }
+    for (var i = 0; i < items.length; i++) {
+      var it = document.createElement('div');
+      it.className = 'wall-item';
+      it.innerHTML = escHtml(items[i].content) +
+        (items[i].created_at ? '<span class="t">' + escHtml(fmtTime(items[i].created_at)) + '</span>' : '');
+      elWallList.appendChild(it);
+    }
+  }
+
+  function openWall() {
+    wallOpen = true;
+    elWall.classList.add('show');
+    elWallSub.textContent = CLOUD_ON ? '正在加载…' : '未连接云端';
+    renderWall([]);
+
+    if (!CLOUD_ON) {
+      elWallSub.textContent = '纯本地模式';
+      return;
+    }
+
+    fetchCloudWishes().then(function (items) {
+      if (!wallOpen) return;
+      elWallSub.textContent = items.length ? ('共 ' + items.length + ' 颗心愿') : '还没有人留言';
+      renderWall(items);
+    });
+  }
+
+  function closeWall() {
+    wallOpen = false;
+    elWall.classList.remove('show');
+  }
+
+  elWallBtn.addEventListener('click', function (e) {
+    if (e.preventDefault) e.preventDefault();
+    if (wallOpen) { closeWall(); return; }
+    openWall();
+  });
+  elWallClose.addEventListener('click', closeWall);
+
+  /* ---------------- 心愿：输入条 ---------------- */
+
+  var barOpen = false;
+  var pendingPos = null;
+  var suppressOpen = false;
+
+  function openWishBar(x, y) {
+    pendingPos = { x: x, y: y };
+    barOpen = true;
+    elBar.classList.add('show');
+    if (elInput.focus) elInput.focus();
+  }
+
+  function closeWishBar() {
+    barOpen = false;
+    elBar.classList.remove('show');
+    elInput.value = '';
+    if (elInput.blur) elInput.blur();
+  }
+
+  function wishPool() {
+    var pool = loadSavedWishes().concat(CONFIG.wishes);
+    return pool.length ? pool : ['愿你今年所求皆有回应'];
+  }
+
+  function randomWish() {
+    var pool = wishPool();
+    return pool[(Math.random() * pool.length) | 0];
+  }
+
+  function submitWish() {
+    var text = (elInput.value || '').trim();
+    var isCustom = !!text;
+    if (text) {
+      text = text.slice(0, CONFIG.maxWishLen);
+      saveWishText(text);
+    } else {
+      text = randomWish();
+    }
+    var pos = pendingPos || { x: W / 2, y: H * 0.55 };
+    addWish(text, pos.x, pos.y);
+    chime();
+    closeWishBar();
+
+    // 只有用户自己写的才上传到共享池，随机抽的默认文案不污染云端
+    if (isCustom) {
+      pushWishToCloud(text);
+      if (CLOUD_ON) toast('心愿已挂上，大家都能看到');
+    }
+  }
+
+  elOk.addEventListener('click', function (e) {
+    e.preventDefault();
+    submitWish();
+  });
+
+  elWish.addEventListener('click', function (e) {
+    if (e.preventDefault) e.preventDefault();
+    if (barOpen) { closeWishBar(); return; }
+    openWishBar(W / 2 + (Math.random() - 0.5) * W * 0.4, H * (0.32 + Math.random() * 0.16));
+  });
+
+  elInput.addEventListener('keydown', function (e) {
+    var key = e.key || '';
+    if (key === 'Enter' || e.keyCode === 13) { e.preventDefault(); submitWish(); }
+    else if (key === 'Escape' || e.keyCode === 27) { e.preventDefault(); closeWishBar(); }
+  });
+
+  // 键盘弹起时把输入条顶上去（iOS 不缩小 innerHeight，只能看 visualViewport）
+  var vv = window.visualViewport;
+  function placeBarForViewport() {
+    if (!vv || !barOpen) return;
+    var gap = Math.max(0, (window.innerHeight - vv.height - vv.offsetTop));
+    elBar.style.bottom = 'calc(' + (58 + gap + 10) + 'px + var(--safe-b))';
+  }
+  if (vv && vv.addEventListener) {
+    vv.addEventListener('resize', placeBarForViewport);
+    vv.addEventListener('scroll', placeBarForViewport);
+  }
+
+  /* ---------------- 心愿：落点避让 + 上限 ---------------- */
+
+  var MAX_WISHES = 6;
+
+  function pickSpot(x, y) {
+    var best = { x: x, y: y }, bestDist = -1;
+    for (var a = 0; a < 5; a++) {
+      var cand = a === 0 ? { x: x, y: y } : {
+        x: x + (Math.random() - 0.5) * 110,
+        y: y + (Math.random() - 0.5) * 70
+      };
+      var dmin = Infinity;
+      for (var i = 0; i < wishes.length; i++) {
+        var dx = wishes[i].x - cand.x, dy = wishes[i].y - cand.y;
+        var d = dx * dx + dy * dy;
+        if (d < dmin) dmin = d;
+      }
+      if (dmin > bestDist) { bestDist = dmin; best = cand; }
+      if (dmin > 3600) break;              // 60px 内没冲突就够
+    }
+    return best;
+  }
+
+  function addWish(text, x, y, ttl) {
+    var spot = pickSpot(x, y);
+    wishes.push({
+      x: spot.x, y: spot.y,
+      text: text,
+      life: 0, ttl: ttl || 2.8,
+      drift: (Math.random() - 0.5) * 14
+    });
+    while (wishes.length > MAX_WISHES) wishes.shift();
+  }
+
+  /* ---------------- 交互：拖动 / 缩放 / 点击 ---------------- */
+
+  // 多指跟踪（双指捏合缩放，手机上原来只有滚轮逻辑，zoom 永远等于 1）
+  var ptrs = {};
+  var pinchDist = 0, pinchZoom = 1;
+
+  function ptrCount() {
+    var n = 0;
+    for (var k in ptrs) { if (ptrs.hasOwnProperty(k)) n++; }
+    return n;
+  }
+
+  function twoPointDist() {
+    var ids = [];
+    for (var k in ptrs) { if (ptrs.hasOwnProperty(k)) ids.push(ptrs[k]); }
+    if (ids.length < 2) return 0;
+    var dx = ids[0].x - ids[1].x, dy = ids[0].y - ids[1].y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  cvs.addEventListener('pointerdown', function (e) {
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (ptrCount() >= 2) {
+      // 第二根手指落下：切到捏合，取消旋转与点击判定
+      pinchDist = twoPointDist();
+      pinchZoom = zoom;
+      dragging = false;
+      tapSkipped = true;
+      dragMoved = 999;
+      e.preventDefault();
+      return;
+    }
+    if (barOpen) { closeWishBar(); suppressOpen = true; }
+    tapSkipped = false;
+    if (!introDone) { skipIntro(); tapSkipped = true; }
+    dragging = true;
+    dragX = e.clientX;
+    dragMoved = 0;
+    dragVel = 0;
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('pointermove', function (e) {
+    if (ptrs[e.pointerId]) { ptrs[e.pointerId].x = e.clientX; ptrs[e.pointerId].y = e.clientY; }
+
+    if (ptrCount() >= 2) {
+      var d = twoPointDist();
+      if (pinchDist > 0 && d > 0) {
+        zoom = Math.min(2.2, Math.max(0.5, pinchZoom * (d / pinchDist)));
+      }
+      return;
+    }
+
+    if (!dragging) return;
+    var dx = e.clientX - dragX;
+    dragX = e.clientX;
+    dragMoved += Math.abs(dx);
+    angle += dx * 0.006;
+    dragVel = dx * 0.006;
+  });
+
+  window.addEventListener('pointerup', function (e) {
+    if (ptrs[e.pointerId]) delete ptrs[e.pointerId];
+    if (ptrCount() < 2) pinchDist = 0;
+    if (!dragging) { suppressOpen = false; return; }
+    dragging = false;
+    var wasTap = dragMoved < 8 && !tapSkipped && !suppressOpen;
+    suppressOpen = false;
+    // 点一下 = 树上飘一颗心愿；写自己的心愿走右下角「写」按钮
+    if (wasTap) {
+      addWish(randomWish(), e.clientX, e.clientY);
+      chime();
+    }
+  });
+
+  window.addEventListener('pointercancel', function (e) {
+    if (ptrs[e.pointerId]) delete ptrs[e.pointerId];
+    dragging = false;
+    suppressOpen = false;
+    pinchDist = 0;
+  });
+
+  cvs.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    zoom = Math.min(2.2, Math.max(0.5, zoom * (e.deltaY > 0 ? 0.92 : 1.08)));
+  }, { passive: false });
+
+  // iOS Safari 的页面级双指缩放会跟画布捏合打架，禁掉默认手势
+  document.addEventListener('gesturestart', function (e) { if (e.preventDefault) e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturechange', function (e) { if (e.preventDefault) e.preventDefault(); }, { passive: false });
+
+  /* ---------------- 存图 ---------------- */
+
+  function exportImage() {
+    // 微信里看大图靠的是「长边」，1080×1920 发出去会被二次压缩。
+    // 改成按手机竖屏 9:16 出 1440×2560，长边翻倍，文字和星星边缘都更实。
+    var EW = 1440, EH = 2560;
+    var out = document.createElement('canvas');
+    out.width = EW;
+    out.height = EH;
+    var g = out.getContext('2d');
+    g.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in g) g.imageSmoothingQuality = 'high';
+
+    var bg = g.createLinearGradient(0, 0, 0, EH);
+    bg.addColorStop(0, CONFIG.bg[0]);
+    bg.addColorStop(0.55, CONFIG.bg[1]);
+    bg.addColorStop(1, CONFIG.bg[2]);
+    g.fillStyle = bg;
+    g.fillRect(0, 0, EW, EH);
+
+    // 用 cover 裁切，别把画布拉宽变形（原来用 max 会把画面非等比放大）
+    var sc = Math.max(EW / cvs.width, EH / cvs.height);
+    var dw = cvs.width * sc, dh = cvs.height * sc;
+    g.drawImage(cvs, (EW - dw) / 2, (EH - dh) / 2, dw, dh);
+
+    var vig = g.createRadialGradient(EW / 2, EH * 0.45, EH * 0.2, EW / 2, EH * 0.45, EH * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(2,4,10,0.62)');
+    g.fillStyle = vig;
+    g.fillRect(0, 0, EW, EH);
+
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+
+    // 顶部压一层暗角：树尖星光很亮，文字直接压上去会互相抢
+    var topScrim = g.createLinearGradient(0, 0, 0, EH * 0.24);
+    topScrim.addColorStop(0, 'rgba(4, 6, 14, .72)');
+    topScrim.addColorStop(1, 'rgba(4, 6, 14, 0)');
+    g.fillStyle = topScrim;
+    g.fillRect(0, 0, EW, EH * 0.24);
+
+    // 标题整体上移，给树尖让出位置（原来的 0.115 会跟顶星撞在一起）
+    var titleY = EH * 0.072;
+    g.shadowColor = 'rgba(255, 210, 140, .6)';
+    g.shadowBlur = 45;
+    g.fillStyle = '#fff8e7';
+    g.font = '600 90px "Songti SC", "STSong", Georgia, serif';
+    g.fillText(CONFIG.copy.title, EW / 2, titleY);
+    g.shadowBlur = 0;
+    g.fillStyle = 'rgba(220, 230, 255, .72)';
+    g.font = '40px system-ui, -apple-system, "Microsoft YaHei", sans-serif';
+    g.fillText(CONFIG.copy.subtitle, EW / 2, titleY + 76);
+    g.fillStyle = 'rgba(210, 222, 250, .42)';
+    g.font = '32px system-ui, -apple-system, "Microsoft YaHei", sans-serif';
+    g.fillText(CONFIG.copy.watermark, EW / 2, EH - 114);
+
+    function done(url, revoke) {
+      // 微信 / iOS 微信：a[download] 被无视，点了没反应。改成弹预览层让用户长按保存。
+      if (IN_WECHAT || (IS_IOS && COARSE)) {
+        showViewer(url, revoke);
+        return;
+      }
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = CONFIG.copy.fileName;
+      document.body.appendChild(a);
+      a.click();
+      if (a.remove) a.remove();
+      if (revoke && window.URL && window.URL.revokeObjectURL) {
+        setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+      }
+    }
+
+    // PNG 无损，微信里发「原图」才不掉画质
+    if (out.toBlob) {
+      out.toBlob(function (blob) {
+        if (!blob) { done(out.toDataURL('image/png'), false); return; }
+        done(window.URL.createObjectURL(blob), true);
+      }, 'image/png');
+    } else {
+      done(out.toDataURL('image/png'), false);
+    }
+  }
+
+  /* ---------------- 图片预览层（微信长按保存） ---------------- */
+
+  var viewerUrl = null;
+
+  function showViewer(url, revoke) {
+    elViewerImg.src = url;
+    elViewerTip.innerHTML = IN_WECHAT
+      ? '长按图片 → <b>保存图片</b>，再发到聊天里'
+      : '长按图片 → <b>存储到照片</b>，再发到聊天里';
+    elViewer.classList.add('show');
+    viewerUrl = revoke ? url : null;
+  }
+
+  function hideViewer() {
+    elViewer.classList.remove('show');
+    // 先清 src 再 revoke，否则 iOS 上图片会瞬间变白
+    setTimeout(function () {
+      elViewerImg.removeAttribute('src');
+      if (viewerUrl && window.URL && window.URL.revokeObjectURL) {
+        try { window.URL.revokeObjectURL(viewerUrl); } catch (e) {}
+      }
+      viewerUrl = null;
+    }, 260);
+  }
+
+  elViewerClose.addEventListener('click', hideViewer);
+  elViewer.addEventListener('click', function (e) {
+    // 点空白处也能关，但点到图片本身（准备长按）不关
+    if (e.target === elViewer || e.target.parentNode === elViewerImg.parentNode && e.target !== elViewerImg) hideViewer();
+  });
+
+  elSave.addEventListener('click', function () {
+    // 开场没结束就存图，会存到一棵还没长好的树
+    if (!introDone) { skipIntro(); }
+    exportImage();
+    elSave.textContent = '✓';
+    setTimeout(function () { elSave.textContent = '存图'; }, 1400);
+  });
+
+  /* ---------------- 分享：心愿塞进 URL，不用服务器 ---------------- */
+  // 链接形如 xxx.html#w=<base64url>；打开时把链接里的心愿当作「朋友挂的」播出来
+
+  var SHARE_LIMIT = 12;
+  var toastTimer = 0;
+
+  function toast(msg) {
+    if (!elToast) return;
+    elToast.textContent = msg;
+    elToast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { elToast.classList.remove('show'); }, 2400);
+  }
+
+  function toB64(str) {
+    try {
+      return btoa(unescape(encodeURIComponent(str)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) { return ''; }
+  }
+
+  function fromB64(s) {
+    try {
+      var t = String(s).replace(/-/g, '+').replace(/_/g, '/');
+      while (t.length % 4) t += '=';
+      return decodeURIComponent(escape(atob(t)));
+    } catch (e) { return ''; }
+  }
+
+  function readHashWishes() {
+    var hash = (window.location && window.location.hash) || '';
+    var m = /[#&]w=([^&]+)/.exec(hash);
+    if (!m) return [];
+    var raw = fromB64(m[1]);
+    if (!raw) return [];
+    var arr;
+    try { arr = JSON.parse(raw); } catch (e) { return []; }
+    if (!Array.isArray(arr)) return [];
+    var out = [];
+    for (var i = 0; i < arr.length && out.length < SHARE_LIMIT; i++) {
+      if (typeof arr[i] !== 'string') continue;
+      var s = arr[i].replace(/\s+/g, ' ').trim().slice(0, CONFIG.maxWishLen);
+      if (s) out.push(s);
+    }
+    return out;
+  }
+
+  function fallbackCopy(text, cb) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = !!(document.execCommand && document.execCommand('copy'));
+      if (ta.remove) ta.remove();
+      cb(ok);
+    } catch (e) { cb(false); }
+  }
+
+  function copyText(text, cb) {
+    var nav = window.navigator;
+    if (nav && nav.clipboard && nav.clipboard.writeText) {
+      nav.clipboard.writeText(text).then(
+        function () { cb(true); },
+        function () { fallbackCopy(text, cb); }
+      );
+      return;
+    }
+    fallbackCopy(text, cb);
+  }
+
+  function shareLink() {
+    var list = loadSavedWishes().slice(0, SHARE_LIMIT);
+    if (!list.length) { toast('先写一条心愿，再分享给朋友'); return; }
+    var q = '#w=' + toB64(JSON.stringify(list));
+    var base = String((window.location && window.location.href) || '').split('#')[0];
+
+    // 微信里是「单页」，改地址栏没意义也不安全，直接把心愿写进当前 URL（能改就改）
+    var canRewrite = false;
+    try { window.history.replaceState(null, '', q); canRewrite = true; } catch (e) { canRewrite = false; }
+    var full = base + q;
+
+    // 微信内置浏览器：剪贴板 API 通常被禁，用 textarea + select 让用户长按复制，
+    // 并提示更省事的做法——让好友直接打开自己转发的这条消息。
+    if (IN_WECHAT) {
+      copyText(full, function (ok) {
+        if (ok) toast('链接已复制，粘贴发给朋友即可');
+        else if (canRewrite) toast('心愿已放进链接，点右上角「···」转发给朋友');
+        else toast('点右上角「···」转发给朋友，你写的心愿已在页面里');
+      });
+      return;
+    }
+
+    copyText(full, function (ok) {
+      toast(ok ? '链接已复制，发给朋友就能看见你的心愿' : '复制失败，请手动复制地址栏链接');
+    });
+  }
+
+  elShare.addEventListener('click', function () {
+    shareLink();
+    elShare.textContent = '✓';
+    setTimeout(function () { elShare.textContent = '分享'; }, 1400);
+  });
+
+  // 打开带 #w= 的链接时，把链接里的心愿一颗一颗挂上去
+  function showSharedWishes(list) {
+    var mine = loadSavedWishes();
+    var fresh = [];
+    for (var i = 0; i < list.length; i++) {
+      if (mine.indexOf(list[i]) < 0) fresh.push(list[i]);
+    }
+    if (!fresh.length) return;
+    toast('带回了 ' + fresh.length + ' 颗心愿');
+    for (var j = 0; j < fresh.length; j++) {
+      (function (text, k) {
+        setTimeout(function () {
+          var x = W / 2 + (Math.random() - 0.5) * W * 0.55;
+          var y = H * (0.26 + Math.random() * 0.32);
+          addWish(text, x, y, 6.2);
+          chime();
+        }, 700 + k * 780);
+      })(fresh[j], j);
+    }
+  }
+
+  /* ---------------- 绘制 ---------------- */
+
+  var last = 0, t = 0, lastPaint = 0;
+
+  function frame(now) {
+    if (!last) last = now;
+    var dt = (now - last) / 1000;
+    last = now;
+    if (dt > 0.06) dt = 0.06;
+    t += dt;
+
+    if (!introDone) {
+      introT += dt;
+      if (introT > 3.1) revealUI();
+      if (introT >= INTRO_END) { introT = INTRO_END; introDone = true; }
+    } else {
+      perfAcc += dt; perfFrames++;
+      if (perfFrames >= 40) {
+        var avg = perfAcc / perfFrames * 1000;
+        if (avg > 26 && quality > 0.35) quality -= 0.15;
+        else if (avg < 15 && quality < 1) quality += 0.08;
+        perfAcc = 0; perfFrames = 0;
+      }
+    }
+
+    // 画质掉到 0.5 以下就降到 30fps，视觉几乎无差但省一半电
+    if (introDone && quality < 0.5 && !dragging && now - lastPaint < 32) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    lastPaint = now;
+
+    if (!dragging || dragMoved < 3) {
+      // 衰减按 dt 归一化到 60Hz，高刷屏上惯性才不会甩太远
+      dragVel *= Math.pow(0.94, dt * 60);
+      angle += (spin + dragVel * 30) * dt;
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    if (staticLayer) ctx.drawImage(staticLayer, 0, 0, W, H);
+
+    drawStars();
+    drawGround();
+    drawTree();
+    drawStar();
+    drawSnow(dt);
+    drawWishes(dt);
+
+    requestAnimationFrame(frame);
+  }
+
+  function drawStars() {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = '#cfe0ff';
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      ctx.globalAlpha = s.a * (0.55 + 0.45 * Math.sin(t * s.sp + s.ph));
+      // 小方块在高倍屏上会被放大成硬边色块，改成圆（半径本身就够小，开销可以忽略）
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 0.8, 0, TAU);
+      ctx.fill();
+    }
+  }
+
+  function drawGround() {
+    var k = (H * 0.72) / HGT * zoom;
+    var cx = W / 2, cy = H / 2 + 14;
+    var gy = cy + (HGT / 2 + 26) * k;
+    var r = BASE_R * 2.0 * k;
+    var key = r.toFixed(0) + '_' + gy.toFixed(0);
+    if (groundCache.key !== key) {
+      var g = ctx.createRadialGradient(cx, gy, 4, cx, gy, r);
+      g.addColorStop(0, 'rgba(70, 190, 130, 0.22)');
+      g.addColorStop(0.5, 'rgba(40, 120, 100, 0.10)');
+      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      groundCache.key = key;
+      groundCache.grad = g;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = groundCache.grad;
+    ctx.beginPath();
+    ctx.ellipse(cx, gy, r, r * 0.31, 0, 0, TAU);
+    ctx.fill();
+
+    if (!introDone && introT < 0.75) {
+      var a0 = 1 - introT / 0.75;
+      var gr0 = 40 + introT * 130;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = a0 * 0.9;
+      ctx.drawImage(starSprite, cx - gr0, gy - gr0 * 0.62, gr0 * 2, gr0 * 1.24);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawTree() {
+    var k = (H * 0.72) / HGT * zoom;
+    var cx = W / 2, cy = H / 2 + 14;
+    var dist = 980;
+    var sizeScale = (H / 900) * zoom;
+    var cosA = Math.cos(angle), sinA = Math.sin(angle);
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    var boost = 1;
+    if (!introDone && introT > STAR_LAND - 0.1) {
+      var bd = (introT - STAR_LAND) / 0.22;
+      boost = 1 + 1.1 * Math.exp(-bd * bd);
+    }
+
+    var n = Math.floor(tree.length * (introDone ? quality : 1));
+    var p, i, x, z, s, sx, sy, alpha, rad, e, q, rr, gx, gz, young, baseY;
+
+    for (i = 0; i < n; i++) {
+      p = tree[i];
+      e = 1;
+      rr = p.r;
+      young = false;
+      if (!introDone) {
+        q = (introT - p.delay) / 0.95;
+        if (q <= 0) continue;
+        if (q > 1) q = 1; else e = 1 - Math.pow(1 - q, 3);
+        var ang = p.ang - (1 - e) * 7;
+        gx = Math.cos(ang + angle);
+        gz = Math.sin(ang + angle);
+        rr = p.r * Math.pow(e, 0.7);
+        young = q < 0.999;
+      } else {
+        gx = p.ca * cosA - p.sa * sinA;
+        gz = p.sa * cosA + p.ca * sinA;
+      }
+      x = gx * rr;
+      z = gz * rr;
+      s = dist / (dist + z);
+      sx = cx + x * s * k;
+      sy = cy + (p.y + (introDone ? 0 : (1 - e) * 190)) * s * k;
+
+      alpha = (0.34 + (s - 0.8) * 1.35);
+      if (alpha > 1) alpha = 1;
+      alpha *= 0.62 + 0.38 * Math.sin(t * p.speed * 2 + p.phase);
+      if (!introDone) alpha *= e;
+      alpha *= boost;
+      if (alpha <= 0.02) continue;
+
+      rad = p.size * sizeScale * (0.75 + s * 0.35) * (introDone ? 1 : 0.5 + 0.5 * e);
+
+      if (!young && p.orn && p.glow && (introDone ? quality > 0.75 : true)) {
+        var gr = rad * 3.2;
+        ctx.globalAlpha = Math.min(1, alpha * 0.55);
+        ctx.drawImage(p.glow, sx - gr, sy - gr, gr * 2, gr * 2);
+      }
+
+      ctx.globalAlpha = Math.min(1, alpha);
+      ctx.fillStyle = young ? '#eafff2' : p.fill;
+      // 一律走 arc：fillRect 的硬边在 3x 屏上放大后就是一个个小方块，很显脏。
+      // 圆的面积只有同半径方块的 π/4，所以半径乘 1.12 把密度补回来，不然树会变稀。
+      rr = rad * 1.12;
+      ctx.beginPath();
+      ctx.arc(sx, sy, rr > 0.4 ? rr : 0.4, 0, TAU);
+      ctx.fill();
+    }
+
+    var grow = introDone ? 1 : Math.max(0, Math.min(1, (introT - 1.3) / 0.9));
+    if (grow > 0) {
+      for (i = 0; i < trunk.length; i++) {
+        p = trunk[i];
+        x = (p.ca * cosA - p.sa * sinA) * p.r;
+        z = (p.sa * cosA + p.ca * sinA) * p.r;
+        s = dist / (dist + z);
+        ctx.globalAlpha = 0.55 * grow;
+        ctx.fillStyle = p.fill;
+        rad = p.size * sizeScale;
+        ctx.beginPath();
+        ctx.arc(cx + x * s * k, cy + p.y * s * k, rad > 0.4 ? rad : 0.4, 0, TAU);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = (0.5 + 0.2 * Math.sin(t * 1.3)) * grow;
+      ctx.fillStyle = 'hsl(44, 95%, 66%)';
+      baseY = cy + (HGT / 2) * k;
+      for (i = 0; i < 64; i++) {
+        var bAng = (i / 64) * TAU + angle;
+        var bx = Math.cos(bAng) * BASE_R * 1.02;
+        var bz = Math.sin(bAng) * BASE_R * 1.02;
+        var bs = dist / (dist + bz);
+        // 基座金点也改圆，跟树体保持一致
+        ctx.beginPath();
+        ctx.arc(cx + bx * bs * k, baseY + (bs - 1) * 6, 1.7, 0, TAU);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawStar() {
+    var k = (H * 0.72) / HGT * zoom;
+    var cx = W / 2;
+    var cy = H / 2 + 14 - (HGT / 2) * k - 6;
+    var pulse = 0.75 + 0.25 * Math.sin(t * 2.2);
+    var R = 13 * (H / 900) * zoom * (1 + 0.06 * Math.sin(t * 3));
+
+    if (!introDone) {
+      if (introT < STAR_DROP) return;
+      var ft = Math.min(1, (introT - STAR_DROP) / (STAR_LAND - STAR_DROP));
+      cy -= (1 - ft * ft) * H * 0.8;
+      R *= 0.55 + 0.45 * ft;
+      if (introT >= STAR_LAND) {
+        var rt = (introT - STAR_LAND) / 0.7;
+        if (rt < 1) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = (1 - rt) * 0.55;
+          ctx.strokeStyle = '#ffe6b0';
+          ctx.lineWidth = 3 * (1 - rt) + 0.6;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 12 + rt * Math.min(W, H) * 0.45, 0, TAU);
+          ctx.stroke();
+        }
+      }
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = pulse * 0.9;
+    var gr = R * 5;
+    ctx.drawImage(starSprite, cx - gr, cy - gr, gr * 2, gr * 2);
+
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = '#fff6d8';
+    ctx.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var rr = i % 2 === 0 ? R : R * 0.42;
+      var aa = -Math.PI / 2 + (i / 10) * TAU + t * 0.15;
+      var px = cx + Math.cos(aa) * rr;
+      var py = cy + Math.sin(aa) * rr;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawSnow(snowDt) {
+    snowDt = Math.max(0.001, Math.min(snowDt || 0.016, 0.06));
+    if (!snow.length) return;
+    var appear = 1;
+    if (!introDone) {
+      appear = Math.max(0, Math.min(1, (introT - 2.6) / 0.9));
+      if (appear <= 0) return;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#eaf2ff';
+    for (var i = 0; i < snow.length; i++) {
+      var f = snow[i];
+      // 用真实 dt，别再写死 1/60：120Hz 屏和掉帧降速模式下速度才一致
+      f.y += f.vy * snowDt * (0.6 + f.sp);
+      f.x += Math.sin(t * f.sp + f.ph) * f.sway * snowDt * 0.75;
+      if (f.y > H + 6) { f.y = -8; f.x = Math.random() * W; }
+      if (f.x < -10) f.x = W + 8;
+      if (f.x > W + 10) f.x = -8;
+      ctx.globalAlpha = f.a * 0.8 * appear;
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r * 0.9, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // 心愿文字预先烘成带光晕的小图：canvas 的 shadowBlur 每帧重算极慢
+  var wishCache = {};
+
+  function wishSprite(text) {
+    if (wishCache[text]) return wishCache[text];
+    var fs = 15;
+    var font = fs + 'px system-ui, "Microsoft YaHei", sans-serif';
+    var pad = 18;
+    var pc = document.createElement('canvas').getContext('2d');
+    pc.font = font;
+    var w = Math.ceil(pc.measureText(text).width) + pad * 2;
+    var h = fs + pad * 2;
+    var c = document.createElement('canvas');
+    c.width = Math.ceil(w * DPR);
+    c.height = Math.ceil(h * DPR);
+    var g = c.getContext('2d');
+    g.scale(DPR, DPR);
+    g.font = font;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(255, 200, 110, .85)';
+    g.shadowBlur = 12;
+    g.fillStyle = '#ffe9b8';
+    g.fillText(text, w / 2, h / 2);
+    g.shadowBlur = 0;
+    g.fillText(text, w / 2, h / 2);
+    c._w = w; c._h = h;
+    wishCache[text] = c;
+    return c;
+  }
+
+  function drawWishes(dt) {
+    if (!wishes.length) return;
+    ctx.globalCompositeOperation = 'source-over';
+    for (var i = wishes.length - 1; i >= 0; i--) {
+      var w = wishes[i];
+      w.life += dt;
+      if (w.life > w.ttl) { wishes.splice(i, 1); continue; }
+      var p = w.life / w.ttl;
+      var ease = 1 - Math.pow(1 - p, 2);
+      var a = p < 0.15 ? p / 0.15 : (1 - Math.pow(p, 2.2));
+      var sp = wishSprite(w.text);
+      ctx.globalAlpha = Math.max(0, a) * 0.95;
+      ctx.drawImage(sp, w.x + w.drift * ease - sp._w / 2, w.y - ease * 96 - sp._h / 2, sp._w, sp._h);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------------- 启动 ---------------- */
+
+  buildStarSprite();
+  buildTree();
+  resize();
+  if (REDUCED) revealUI();
+  requestAnimationFrame(frame);
+
+  // 共享祝福池：先把上次没发出去的心愿补发，再拉一批回来在树上飘一下
+  loadCloudQueue();
+  flushCloudQueue();
+
+  if (CLOUD_ON) {
+    setTimeout(function () {
+      fetchCloudWishes().then(function (items) {
+        if (!items.length) return;
+        // 只取最新的几条在树上飘，别把屏幕糊满
+        var pick = items.slice(0, 4);
+        for (var i = 0; i < pick.length; i++) {
+          (function (text, k) {
+            setTimeout(function () {
+              var x = W / 2 + (Math.random() - 0.5) * W * 0.5;
+              var y = H * (0.3 + Math.random() * 0.28);
+              addWish(text, x, y, 5.5);
+            }, 900 + k * 700);
+          })(pick[i].content, i);
+        }
+      });
+    }, 2600);   // 等开场动画播完再飘，别抢戏
+  }
+
+  var hashWishes = readHashWishes();
+  if (hashWishes.length) showSharedWishes(hashWishes);
+
+  setTimeout(function () {
+    var pool = wishPool();
+    for (var i = 0; i < pool.length; i++) wishSprite(pool[i]);
+  }, 800);
+
+  /* ---------------- 微信 / 移动端适配收尾 ---------------- */
+
+  // 任意首次触摸都把音频解锁掉（微信 iOS 必须挂在用户手势里）
+  var audioUnlocked = false;
+  function firstGesture() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    unlockAudioOnGesture();
+    document.removeEventListener('touchstart', firstGesture, true);
+    document.removeEventListener('pointerdown', firstGesture, true);
+    document.removeEventListener('click', firstGesture, true);
+  }
+  document.addEventListener('touchstart', firstGesture, true);
+  document.addEventListener('pointerdown', firstGesture, true);
+  document.addEventListener('click', firstGesture, true);
+
+  // 微信里页面切走再回来，AudioContext 会被挂起，回到前台补一次 resume
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+      if (audioCtx && audioCtx.state === 'suspended' && audioCtx.resume) {
+        var p = audioCtx.resume();
+        if (p && p.catch) p.catch(function () {});
+      }
+      // 微信从后台回来时 rAF 的 last 时间戳会跳变，重置一下避免第一帧大跳
+      last = 0;
+    }
+  });
+
+  // 微信里下拉会露出白底并可能触发页面回弹，锁住橡皮筋（CSS 之外再兜一层）
+  document.addEventListener('touchmove', function (e) {
+    if (viewerOpen() || wallOpenUI()) return;   // 弹层里允许正常手势（祝福墙要能滚动）
+    if (e.touches && e.touches.length > 1) { e.preventDefault(); }
+  }, { passive: false });
+
+  function viewerOpen() {
+    return !!(elViewer && elViewer.classList.contains('show'));
+  }
+
+  function wallOpenUI() {
+    return !!(elWall && elWall.classList.contains('show'));
+  }
+})();
+</script>
+</body>
+</html>
