@@ -4,3 +4,5 @@ _wx_probe*.html
 _wall_probe*.html
 .DS_Store
 Thumbs.db
+REVERSING-EXE.md
+pe_triage.py
