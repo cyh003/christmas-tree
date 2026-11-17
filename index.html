@@ -867,6 +867,16 @@
     return pool[(Math.random() * pool.length) | 0];
   }
 
+  // 点树时优先飘别人写的真实祝福，没有云端数据才退回本地文案池
+  var cloudPool = [];
+
+  function randomDisplayWish() {
+    if (cloudPool.length && Math.random() < 0.7) {
+      return cloudPool[(Math.random() * cloudPool.length) | 0].content;
+    }
+    return randomWish();
+  }
+
   function submitWish() {
     var text = (elInput.value || '').trim();
     var isCustom = !!text;
@@ -1019,9 +1029,9 @@
     dragging = false;
     var wasTap = dragMoved < 8 && !tapSkipped && !suppressOpen;
     suppressOpen = false;
-    // 点一下 = 树上飘一颗心愿；写自己的心愿走右下角「写」按钮
+    // 点一下 = 树上飘一颗心愿（优先飘别人写的真实祝福）
     if (wasTap) {
-      addWish(randomWish(), e.clientX, e.clientY);
+      addWish(randomDisplayWish(), e.clientX, e.clientY);
       chime();
     }
   });
@@ -1615,27 +1625,30 @@
   if (REDUCED) revealUI();
   requestAnimationFrame(frame);
 
-  // 共享祝福池：先把上次没发出去的心愿补发，再拉一批回来在树上飘一下
+  // 共享祝福池：先把上次没发出去的心愿补发，再拉一批回来
   loadCloudQueue();
   flushCloudQueue();
 
   if (CLOUD_ON) {
-    setTimeout(function () {
-      fetchCloudWishes().then(function (items) {
-        if (!items.length) return;
-        // 只取最新的几条在树上飘，别把屏幕糊满
+    // 早点拉、慢慢等：拉到就存进 cloudPool，之后点树也能飘出真实祝福
+    fetchCloudWishes().then(function (items) {
+      if (!items.length) return;
+      cloudPool = items;
+
+      // 开场结束后在树上飘几条，停留时间拉长到 8 秒，别一闪就没
+      setTimeout(function () {
         var pick = items.slice(0, 4);
         for (var i = 0; i < pick.length; i++) {
           (function (text, k) {
             setTimeout(function () {
               var x = W / 2 + (Math.random() - 0.5) * W * 0.5;
               var y = H * (0.3 + Math.random() * 0.28);
-              addWish(text, x, y, 5.5);
-            }, 900 + k * 700);
+              addWish(text, x, y, 8);
+            }, k * 900);
           })(pick[i].content, i);
         }
-      });
-    }, 2600);   // 等开场动画播完再飘，别抢戏
+      }, 2800);
+    });
   }
 
   var hashWishes = readHashWishes();
